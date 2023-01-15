@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset='utf-8' />
+        <title>AR.js osm example</title>
+        <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+        }
+        #container canvas {
+            display: block;
+            top: 0px;
+            left: 0px;
+            position: absolute
+        }
+        </style>
+        <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
+        <script type='text/javascript' src='dist/app/bundle.js'></script>
+        <link rel='stylesheet' type='text/css' href='css/webapp.css' />
+    </head>
+    <body style='margin: 0; overflow: hidden'>
+        <a-scene vr-mode-ui='enabled: false' embedded alva-test id='container' style='width: 1024px; height:768px'>
+            <a-camera gps-new-camera='simulateLatitude: 51.049; simulateLongitude: -0.723' position='0 20 0' vertical-controls wasd-controls='acceleration: 1300' fov='80'></a-camera>
+        </a-scene>
+    </body>
+</html>
