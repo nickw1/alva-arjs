@@ -14,6 +14,9 @@
             left: 0px;
             position: absolute
         }
+        .a-canvas {
+            z-index: 999;
+        }
         </style>
         <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
         <script type='text/javascript' src='dist/app/bundle.js'></script>
@@ -21,7 +24,8 @@
     </head>
     <body style='margin: 0; overflow: hidden'>
         <a-scene vr-mode-ui='enabled: false' embedded alva-test id='container' style='width: 1024px; height:768px'>
-            <a-camera gps-new-camera='simulateLatitude: 51.049; simulateLongitude: -0.723' position='0 20 0' vertical-controls wasd-controls='acceleration: 1300' fov='80'></a-camera>
+            <a-camera wasd-controls='acceleration: 100' fov='80'></a-camera>
+            <a-box material='color: red' scale='5 5 5' position='0 0 -50'></a-box>
         </a-scene>
     </body>
 </html>

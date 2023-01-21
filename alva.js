@@ -28,6 +28,7 @@ AFRAME.registerComponent("alva-test", {
 
     init: async function() {
         this.videoCanvas = document.createElement('canvas');
+        this.videoCanvas.setAttribute('id', 'alvaVideoCanvas');
         this.videoCanvas.width = parseInt(this.el.sceneEl.style.width);
         this.videoCanvas.height = parseInt(this.el.sceneEl.style.height);
         this.videoCanvas.style.display = 'block';
