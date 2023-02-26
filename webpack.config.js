@@ -4,7 +4,7 @@ const NodePolyfillPlugin = require('node-polyfill-webpack-plugin');
 module.exports = {
     mode: 'development',
     entry: {
-		'app':  path.resolve(__dirname, 'alva.js'),
+		'aframe':  path.resolve(__dirname, 'src/alva-aframe.js'),
 	},
     output: {
         path: path.resolve(__dirname, 'public/dist'),

@@ -3,8 +3,8 @@
 //
 // https://github.com/alanross/AlvaAR/blob/main/examples/public/camera.html
 
-import { AlvaAR } from './public/assets/alva_ar.js';
-import { AlvaARConnectorTHREE } from './public/assets/alva_ar_three.js';
+import { AlvaAR } from '../public/assets/alva_ar.js';
+import { AlvaARConnectorTHREE } from '../public/assets/alva_ar_three.js';
 
 AFRAME.registerComponent("alva-test", {
     schema: {

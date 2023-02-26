@@ -8,24 +8,20 @@
             width: 100%;
             height: 100%;
         }
-        #container canvas {
+        #container > canvas {
             display: block;
+            width: 1024px;
+            height: 768px;
             top: 0px;
             left: 0px;
             position: absolute
         }
-        .a-canvas {
-            z-index: 999;
-        }
         </style>
-        <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
-        <script type='text/javascript' src='dist/app/bundle.js'></script>
-        <link rel='stylesheet' type='text/css' href='css/webapp.css' />
+    <script type='module' src='index.js'></script>
     </head>
-    <body style='margin: 0; overflow: hidden'>
-        <a-scene vr-mode-ui='enabled: false' embedded alva-test id='container' style='width: 1024px; height:768px'>
-            <a-camera wasd-controls='acceleration: 100' fov='80'></a-camera>
-            <a-box material='color: red' scale='5 5 5' position='0 0 -50'></a-box>
-        </a-scene>
+    <body>
+    <div id='container' style='width:1024px; height:768px'>
+    <canvas id='canvas1' width='1024' height='768'></canvas>
+    </div>
     </body>
 </html>
