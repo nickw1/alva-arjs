@@ -4,6 +4,7 @@ import './clicker.js';
 
 AFRAME.registerComponent("alva-arjs", {
     init: function() {
+        console.log('alva-arjs init()');
         let testEntitiesAdded = false;
         const camera = document.querySelector("[gps-new-camera]");
         camera.addEventListener("gps-camera-update-position", e => {

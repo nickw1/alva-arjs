@@ -52,10 +52,12 @@ AFRAME.registerComponent("alva-scene", {
         
         this.applyPose = AlvaARConnectorTHREE.Initialize(THREE);
         this.el.addEventListener("gps-entity-place-added", e => {
-            this._registerEntity(e.detail.component);
+            console.log('gps-entity-place-added');
+            this.registerEntity(e.detail.component);
         }); 
 
         this.el.addEventListener('all-gps-entity-places-added', e => {
+            console.log('all-gps-entity-places-added');
             this._setActive(true);
         });
     },
@@ -97,7 +99,7 @@ AFRAME.registerComponent("alva-scene", {
         }
     },
 
-    _registerEntity: function(entity) { 
+    registerEntity: function(entity) { 
         const mesh = entity.object3D;
         this.objects.push({object: mesh, visible: false});
     },
