@@ -6,7 +6,17 @@ So far, just a proof-of-concept using what I believe is the minimal code for usi
 
 ## Instructions
 
-Copy the AlvaAR code into the project. This can be done by copying the `assets` directory from the AlvaAR examples [here](https://github.com/alanross/AlvaAR/tree/main/examples/public) into the `public` directory in this repository. 
+Copy the AlvaAR code into the project. This can be done by copying the `public` directory from the AlvaAR examples [here](https://github.com/alanross/AlvaAR/tree/main/examples/public) into a subdirectory called `alva` within the `public` directory in this repository. 
+
+## Versions
+
+This repository is currently very experimental and subject to change; I have experiments with both three.js and A-Frame. Currently, my aim is to try and re-use as much of the AlvaAR example code as possible.
+
+### three.js
+
+Just run a server directly inside the `public` directory and request `three.html`.
+
+### A-Frame
 
 Build the A-Frame version with 
 

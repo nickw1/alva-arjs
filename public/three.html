@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no,shrink-to-fit=no" name="viewport"/>
+    <meta content="IE=edge" http-equiv="X-UA-Compatible"/>
+    <title>AlvaAR Camera</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            font-family: 'Helvetica', sans-serif;
+            overflow: hidden;
+            background: #000;
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: block;
+            overflow: hidden;
+            line-height: 0;
+        }
+
+        #container > * {
+            position: absolute;
+            display: block;
+            user-select: none;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            animation: fadeIn 1.2s;
+        }
+
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        #container > video {
+            object-fit: cover;
+            object-position: 50% 50%;
+        }
+
+        #splash {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            opacity: 1;
+        }
+
+
+        @media screen and (max-device-width: 480px) and (orientation: landscape) {
+            #container {
+                display: none;
+            }
+
+            body::before {
+                content: "Rotate device to portrait mode.";
+                color: white;
+            }
+        }
+
+        @media screen and (max-device-width: 480px) and (orientation: portrait) {
+            #container {
+                display: block;
+            }
+
+            body::before {
+                content: none;
+            }
+        }
+    </style>
+</head>
+<body>
+<div id="container"></div>
+<script type="module" src="index.js"></script>
+</body>
+</html>
