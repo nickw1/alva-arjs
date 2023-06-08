@@ -6,7 +6,10 @@ So far, just a proof-of-concept using what I believe is the minimal code for usi
 
 ## Instructions
 
-Copy the AlvaAR code into the project. This can be done by copying the `public` directory from the AlvaAR examples [here](https://github.com/alanross/AlvaAR/tree/main/examples/public) into a subdirectory called `alva` within the `public` directory in this repository. 
+Copy the `demomod` branch of my fork of the AlvaAR code [here](https://github.com/nickw1/AlvaAR) into the project. Specifically, copy the `public` directory from the AlvaAR examples into a subdirectory called `alva` within the `public` directory in this repository. 
+
+
+My fork has made one or two adaptations to the utility classes provided with the examples, to make them more reusable in other projects.
 
 ## Versions
 
