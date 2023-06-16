@@ -5,6 +5,7 @@
         "build": "npx webpack"
     },
     "dependencies": {
+        "@ar-js-org/ar.js": "^3.4.5",
         "aframe-osm-3d": "^0.5.2",
         "http-server": "^14.1.1",
         "jsfreemaplib": "^0.4.0"

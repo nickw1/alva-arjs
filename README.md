@@ -6,23 +6,21 @@ So far, just a proof-of-concept using what I believe is the minimal code for usi
 
 ## Instructions
 
-Copy the `demomod` branch of my fork of the AlvaAR code [here](https://github.com/nickw1/AlvaAR) into the project. Specifically, copy the `public` directory from the AlvaAR examples into a subdirectory called `alva` within the `public` directory in this repository. 
+This now includes a **modified** version of code from the AlvaAR examples, specifically the contents of the `assets` directory which contains library-style code. 
 
+Everything in the `alva` directory is taken from AlvaAR.
 
-My fork has made one or two adaptations to the utility classes provided with the examples, to make them more reusable in other projects.
+I have however removed the large `image.gif` and `video.mp4` files as these are not needed.
+
 
 ## Versions
 
 This repository is currently very experimental and subject to change; I have experiments with both three.js and A-Frame. Currently, my aim is to try and re-use as much of the AlvaAR example code as possible.
 
-### three.js
+### Build
 
-Just run a server directly inside the `public` directory and request `three.html`.
-
-### A-Frame
-
-Build the A-Frame version with 
+Build with
 
 `npm run build`
 
-Then run a webserver in the `public` directory and request the index page in your browser.
+Then run a webserver in the `public` directory and request the index page you want (`three.html` or `aframe.html`) in your browser.

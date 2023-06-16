@@ -2,6 +2,9 @@ import * as THREE from 'https://threejsfundamentals.org/threejs/resources/threej
 import { AlvaAR } from './alva/assets/alva_ar.js';
 import { ARCamView }  from './alva/assets/view.js';
 import { Camera, onFrame, resize2cover } from './alva/assets/utils.js';
+import * as THREEx from './node_modules/@ar-js-org/ar.js/three.js/build/ar-threex-location-only.js';
+
+console.log(THREEx);
 
 function main() {
     const config = {

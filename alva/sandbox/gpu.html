@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no,shrink-to-fit=no" name="viewport"/>
+    <meta content="IE=edge" http-equiv="X-UA-Compatible"/>
+    <title>WebGL Preprocessing</title>
+    <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgo=">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body, html {
+            font-family: 'Helvetica', sans-serif;
+            font-size: 11px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100%;
+        }
+
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: row;
+            gap: 5px;
+            position: relative;
+        }
+
+        .container > div {
+            width: 300px;
+            height: 450px;
+            position: relative;
+            outline: 1px solid #eee;
+        }
+
+        .container > div::after {
+            position: absolute;
+            display: block;
+            bottom: 0;
+            left: 0;
+            padding: 5px;
+            background: rgba(0, 0, 0, 0.4);
+            color: #fff;
+            content: attr(data-title);
+        }
+
+        .container canvas {
+            width: 100%;
+            height: 100%;
+            background: #333;
+        }
+
+        .container img,
+        .container video {
+            object-fit: cover;
+            width: 100%;
+            height: 100%;
+        }
+
+        .container.stacked {
+            width: 300px;
+            height: 450px;
+        }
+
+        .container.stacked > div {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .container.stacked canvas {
+            background: transparent;
+        }
+
+        .hide {
+            display: none;
+        }
+
+        @media screen and (max-device-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div data-title="Source">
+        <img id="image" src="../assets/image.jpg" alt="image">
+    </div>
+    <div data-title="Source">
+        <video id="video" src="../assets/video.mp4" muted playsinline></video>
+    </div>
+    <div data-title="Canvas WebGL">
+        <canvas id="canvas3d"></canvas>
+    </div>
+    <div data-title="Canvas 2D">
+        <canvas id="canvas2d"></canvas>
+    </div>
+</div>
+<script type="module">
+    import { WebGL2 } from "../assets/webgl.js";
+    import { Stats } from "../assets/stats.js";
+    import GUI from 'https://cdn.jsdelivr.net/npm/lil-gui@0.17/+esm';
+
+    const VERT_SOURCE_DEFAULT = `#version 300 es
+        in vec2 a_position;
+        in vec2 a_texCoord;
+
+        out vec2 v_texCoord;
+
+        void main()
+        {
+            gl_Position = vec4(a_position, 0.0, 1.0);
+
+            // Flip the y axis used in the fragment shader
+            v_texCoord = vec2(a_texCoord.x, 1.0 - a_texCoord.y);
+        }`;
+
+    const FRAG_SOURCE_DEFAULT = `#version 300 es
+        precision highp float;
+
+        uniform sampler2D u_image;
+        uniform vec2 u_dimensions;
+
+        in vec2 v_texCoord;
+        out vec4 out_color;
+
+        void main()
+        {
+            out_color = texture(u_image, v_texCoord);
+        }`;
+
+    const FRAG_SOURCE_GREY = `#version 300 es
+        precision highp float;
+
+        uniform sampler2D u_image;
+        uniform vec2 u_dimensions;
+
+        in vec2 v_texCoord;
+        out vec4 out_color;
+
+        void main()
+        {
+            vec4 color = texture(u_image, v_texCoord);
+
+            float luminance = 0.299 * color.r + 0.587 * color.g + 0.114 * color.b;
+
+            out_color = vec4(vec3(luminance), color.a);
+        }`;
+
+    const FRAG_SOURCE_BLUR = `#version 300 es
+        precision highp float;
+
+        #define PIXEL_AT(_x, _y) (texture(u_image, v_texCoord + onePixel * vec2(_x, _y)))
+
+        uniform sampler2D u_image;
+        uniform vec2 u_dimensions;
+        uniform float u_radius;
+
+        in vec2 v_texCoord;
+        out vec4 out_color;
+
+        float PI = 3.141592;
+
+        float gaussian(float x, float sigma)
+        {
+            return (1.0 / sqrt(2.0 * PI * sigma * sigma)) * exp(-(x * x) / (2.0 * sigma * sigma));
+        }
+
+        void main()
+        {
+            vec2 onePixel = vec2(1.0, 1.0) / u_dimensions;
+            vec4 color = vec4(0.0);
+
+            float sigma = u_radius / 3.0;
+            int radius = int(u_radius);
+            float weightSum = 0.0;
+
+            for (int x = -radius; x <= radius; ++x)
+            {
+                for (int y = -radius; y <= radius; ++y)
+                {
+                    float weight = gaussian(float(x), sigma) * gaussian(float(y), sigma);
+                    color += PIXEL_AT(x, y) * weight;
+                    weightSum += weight;
+                }
+            }
+
+            out_color = color / weightSum;
+        }`;
+
+    const FRAG_SOURCE_HARRIS = `#version 300 es
+        precision highp float;
+
+        #define PIXEL_AT(_x, _y) (texture(u_image, v_texCoord + onePixel * vec2(_x, _y)))
+        #define g1 0.25
+        #define g2 0.125
+        #define g3 0.0625
+
+        uniform sampler2D u_image;
+        uniform vec2 u_dimensions;
+        uniform float u_threshold;
+        uniform float u_k;
+        uniform int u_step;
+
+        in vec2 v_texCoord;
+        out vec4 out_color;
+
+        float Harris(float Ixx, float Iyy, float Ixy, float k, float threshold)
+        {
+            // Trace of 2×2 matrix
+            float trace = Ixx + Iyy;
+
+            // Calculation of 2×2 matrix determinant
+            float det = (Ixx * Iyy) - (Ixy * Ixy);
+
+            float R = det - k * trace * trace;
+
+            return (R >= threshold) ? R : 0.0;
+        }
+
+        float ShiTomasi(float Ixx, float Iyy, float Ixy, float k, float threshold)
+        {
+            // Trace of 2×2 matrix
+            float trace = Ixx + Iyy;
+
+            // Calculation of 2×2 matrix determinant
+            float det = (Ixx * Iyy) - (Ixy * Ixy);
+
+            float sq = sqrt(trace * trace / 4.0 - det);
+
+            float R = min( trace * 0.5 + sq, trace * 0.5 - sq );
+
+            return (R >= threshold) ? R : 0.0;
+        }
+
+        void main()
+        {
+            vec2 onePixel = vec2(1.0, 1.0) / u_dimensions;
+
+            vec4 p11 = PIXEL_AT(-1,-1); vec4 p12 = PIXEL_AT( 0,-1); vec4 p13 = PIXEL_AT( 1,-1);
+            vec4 p21 = PIXEL_AT(-1, 0); vec4 p22 = PIXEL_AT( 0, 0); vec4 p23 = PIXEL_AT( 1, 0);
+            vec4 p31 = PIXEL_AT(-1, 1); vec4 p32 = PIXEL_AT( 0, 1); vec4 p33 = PIXEL_AT( 1, 1);
+
+            if( u_step == 0 )
+            {
+                // https://en.wikipedia.org/wiki/Sobel_operator
+                //        |+1  0 -1|        |+1 +2 +1|
+                //  hor = |+2  0 -2|   ver =| 0  0  0|
+                //        |+1  0 -1|        |-1 -2 -1|
+
+                float hor = ( p11.r * 1.0 + p12.r * 2.0 + p13.r * 1.0 ) + ( p31.r * -1.0 + p32.r * -2.0 + p33.r * -1.0 );
+                float ver = ( p11.r * 1.0 + p21.r * 2.0 + p31.r * 1.0 ) + ( p13.r * -1.0 + p23.r * -2.0 + p33.r * -1.0 );
+
+                // map gradients to [0, 1] range
+                // hor = (hor + 4.0) / 8.0;
+                // ver = (ver + 4.0) / 8.0;
+
+                float Ixx = hor * hor;
+                float Iyy = ver * ver;
+                float Ixy = hor * ver;
+
+                out_color = vec4(Ixx, Iyy, Ixy, 1);
+            }
+            else
+            {
+                // vec4 I = ( PIXEL_AT(-3,-3) * 0.0039 ) + ( PIXEL_AT(-2,-3) * 0.0156 ) + ( PIXEL_AT(-1,-3) * 0.0234 ) + ( PIXEL_AT( 0,-3) * 0.0313 ) + ( PIXEL_AT( 1,-3) * 0.0234 ) + ( PIXEL_AT( 2,-3) * 0.0156 ) + ( PIXEL_AT( 3,-3) * 0.0039 ) +
+                //          ( PIXEL_AT(-3,-2) * 0.0156 ) + ( PIXEL_AT(-2,-2) * 0.0625 ) + ( PIXEL_AT(-1,-2) * 0.0938 ) + ( PIXEL_AT( 0,-2) * 0.1250 ) + ( PIXEL_AT( 1,-2) * 0.0938 ) + ( PIXEL_AT( 2,-2) * 0.0625 ) + ( PIXEL_AT( 3,-2) * 0.0156 ) +
+                //          ( PIXEL_AT(-3,-1) * 0.0234 ) + ( PIXEL_AT(-2,-1) * 0.0938 ) + ( PIXEL_AT(-1,-1) * 0.1406 ) + ( PIXEL_AT( 0,-1) * 0.1875 ) + ( PIXEL_AT( 1,-1) * 0.1406 ) + ( PIXEL_AT( 2,-1) * 0.0938 ) + ( PIXEL_AT( 3,-1) * 0.0234 ) +
+                //          ( PIXEL_AT(-3, 0) * 0.0313 ) + ( PIXEL_AT(-2, 0) * 0.1250 ) + ( PIXEL_AT(-1, 0) * 0.1875 ) + ( PIXEL_AT( 0, 0) * 0.2500 ) + ( PIXEL_AT( 1, 0) * 0.1875 ) + ( PIXEL_AT( 2, 0) * 0.1250 ) + ( PIXEL_AT( 3, 0) * 0.0313 ) +
+                //          ( PIXEL_AT(-3, 1) * 0.0234 ) + ( PIXEL_AT(-2, 1) * 0.0938 ) + ( PIXEL_AT(-1, 1) * 0.1406 ) + ( PIXEL_AT( 0, 1) * 0.1875 ) + ( PIXEL_AT( 1, 1) * 0.1406 ) + ( PIXEL_AT( 2, 1) * 0.0938 ) + ( PIXEL_AT( 3, 1) * 0.0234 ) +
+                //          ( PIXEL_AT(-3, 2) * 0.0156 ) + ( PIXEL_AT(-2, 2) * 0.0625 ) + ( PIXEL_AT(-1, 2) * 0.0938 ) + ( PIXEL_AT( 0, 2) * 0.1250 ) + ( PIXEL_AT( 1, 2) * 0.0938 ) + ( PIXEL_AT( 2, 2) * 0.0625 ) + ( PIXEL_AT( 3, 2) * 0.0156 ) +
+                //          ( PIXEL_AT(-3, 3) * 0.0039 ) + ( PIXEL_AT(-2, 3) * 0.0156 ) + ( PIXEL_AT(-1, 3) * 0.0234 ) + ( PIXEL_AT( 0, 3) * 0.0313 ) + ( PIXEL_AT( 1, 3) * 0.0234 ) + ( PIXEL_AT( 2, 3) * 0.0156 ) + ( PIXEL_AT( 3, 3) * 0.0039 );
+
+                vec4 I = ( PIXEL_AT(-2,-2) * 0.0126 ) + ( PIXEL_AT(-1,-2) * 0.0252 ) + ( PIXEL_AT(0,-2) * 0.0314 ) + ( PIXEL_AT(1,-2) * 0.0252 ) + ( PIXEL_AT(2,-2) * 0.0126 ) +
+                         ( PIXEL_AT(-2,-1) * 0.0252 ) + ( PIXEL_AT(-1,-1) * 0.0566 ) + ( PIXEL_AT(0,-1) * 0.0753 ) + ( PIXEL_AT(1,-1) * 0.0566 ) + ( PIXEL_AT(2,-1) * 0.0252 ) +
+                         ( PIXEL_AT(-2, 0) * 0.0314 ) + ( PIXEL_AT(-1, 0) * 0.0753 ) + ( PIXEL_AT(0, 0) * 0.0942 ) + ( PIXEL_AT(1, 0) * 0.0753 ) + ( PIXEL_AT(2, 0) * 0.0314 ) +
+                         ( PIXEL_AT(-2, 1) * 0.0252 ) + ( PIXEL_AT(-1, 1) * 0.0566 ) + ( PIXEL_AT(0, 1) * 0.0753 ) + ( PIXEL_AT(1, 1) * 0.0566 ) + ( PIXEL_AT(2, 1) * 0.0252 ) +
+                         ( PIXEL_AT(-2, 2) * 0.0126 ) + ( PIXEL_AT(-1, 2) * 0.0252 ) + ( PIXEL_AT(0, 2) * 0.0314 ) + ( PIXEL_AT(1, 2) * 0.0252 ) + ( PIXEL_AT(2, 2) * 0.0126 );
+
+                // vec4 I = ( p11 * g3 + p12 * g2 + p13 * g3 ) +
+                //          ( p21 * g2 + p22 * g1 + p23 * g2 ) +
+                //          ( p31 * g3 + p32 * g2 + p33 * g3 );
+
+                float R = Harris(I.x, I.y, I.z, u_k, u_threshold);
+
+                out_color = vec4(R, R, R, 1);
+            }
+        }`;
+
+    const FRAG_SOURCE_NONMAX = `#version 300 es
+        precision highp float;
+
+        #define PIXEL_AT(_x, _y) (texture(u_image, v_texCoord + onePixel * vec2(_x, _y)))
+
+        uniform sampler2D u_image;
+        uniform vec2 u_dimensions;
+        uniform float u_radius;
+
+        in vec2 v_texCoord;
+        out vec4 out_color;
+
+        float localMaximum(vec2 p, vec2 onePixel, float value, float radius)
+        {
+            int size = int(radius);
+
+            for(int x = -size; x <= size; x++)
+            {
+                for(int y = -size; y <= size; y++)
+                {
+                    if (x == 0 && y == 0) continue;
+
+                    if (PIXEL_AT(x, y).r >= value)
+                    {
+                        return 0.0;
+                    }
+                }
+            }
+
+            return value;
+        }
+
+        float localMaximumWithDistance(vec2 p, vec2 onePixel, float value, float radius)
+        {
+            int size = int(radius);
+            float max_value = value;
+            float min_dist = radius * radius;
+
+            for(int x = -size; x <= size; x++)
+            {
+                for(int y = -size; y <= size; y++)
+                {
+                    if (x == 0 && y == 0) continue;
+
+                    vec2 coord = v_texCoord + onePixel * vec2(x, y);
+
+                    if (coord.x >= 0.0 && coord.x <= 1.0 && coord.y >= 0.0 && coord.y <= 1.0)
+                    {
+                        float distSquared = float(x * x + y * y);
+
+                        if (distSquared <= radius * radius)
+                        {
+                            float neighbor_value = PIXEL_AT(x, y).r;
+
+                            // Add a small offset based on the distance
+                            float penalized_value = neighbor_value - distSquared * 1e-6;
+
+                            if (penalized_value >= max_value)
+                            {
+                                max_value = penalized_value;
+                                min_dist = distSquared;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return (max_value == value) ? value : 0.0;
+        }
+
+        void main()
+        {
+            vec2 onePixel = vec2(1.0, 1.0) / u_dimensions;
+            float value = texture(u_image, v_texCoord).r;
+
+            value = localMaximum(v_texCoord, onePixel, value, u_radius);
+
+            out_color = vec4(value,value,value,1);
+        }`;
+
+    const FRAG_SOURCE_MARKER = `#version 300 es
+        precision highp float;
+
+        #define PIXEL_AT(_x, _y) (texture(u_image, v_texCoord + onePixel * vec2(_x, _y)))
+
+        uniform sampler2D u_image;
+        uniform vec2 u_dimensions;
+        uniform float u_size;
+
+        in vec2 v_texCoord;
+        out vec4 out_color;
+
+        float circle(vec2 p, vec2 onePixel, float size)
+        {
+            for (float angle = 0.0; angle < 6.283; angle += 0.05)
+            {
+                vec2 center = vec2( p.x + size * cos(angle), p.y + size * sin(angle) );
+
+                if (PIXEL_AT( center.x, center.y).r > 0.0)
+                {
+                    return 1.0;
+                }
+            }
+
+            return 0.0;
+        }
+
+        float crosshair(vec2 p, vec2 onePixel, int size)
+        {
+            if (PIXEL_AT( 0, 0 ).r > 0.0) return 1.0;
+
+            for(int s = -size; s <= size; s++)
+            {
+                if (PIXEL_AT( s, 0 ).r > 0.0 || PIXEL_AT( 0, s ).r > 0.0 ) return 1.0;
+            }
+
+            return 0.0;
+        }
+
+        void main()
+        {
+            vec2 onePixel = vec2(1.0, 1.0) / u_dimensions;
+            float c = crosshair( v_texCoord, onePixel, int(u_size) );
+            out_color = vec4(c,c,0,c);
+        }`;
+
+    class PreProcessor
+    {
+        constructor( canvas )
+        {
+            const gl = canvas.getContext( 'webgl2', { antialias: true } );
+
+            if( !gl )
+            {
+                throw new Error( 'WebGL 2.0 is not supported on this machine.' );
+            }
+
+            // enables writing float textures to frame buffer if not enabled by default
+            if( !gl.getExtension( 'EXT_color_buffer_float' ) )
+            {
+                throw new Error( 'Floating point textures not supported on this machine.' );
+            }
+
+            gl.compileProgram = function( vertShaderSource, fragShaderSource, uniforms, attributes )
+            {
+                const program = WebGL2.createProgram( gl, vertShaderSource, fragShaderSource );
+
+                uniforms = Object.assign( {
+                    dimLocation: 'u_dimensions',
+                    imgLocation: 'u_image'
+                }, uniforms );
+
+                attributes = Object.assign( {
+                    posLocation: 'a_position',
+                    texLocation: 'a_texCoord'
+                }, attributes );
+
+                for( const k of Object.keys( uniforms ) )
+                {
+                    program[k] = gl.getUniformLocation( program, uniforms[k] );
+                }
+
+                for( const k of Object.keys( attributes ) )
+                {
+                    program[k] = gl.getAttribLocation( program, attributes[k] );
+                    gl.enableVertexAttribArray( program[k] );
+                }
+
+                return program;
+            };
+
+            gl.runProgram = function( program, srcTexture, dstFrameBuffer, xScale = 1, yScale = 1 )
+            {
+                gl.bindFramebuffer( gl.FRAMEBUFFER, dstFrameBuffer );
+                gl.useProgram( program );
+
+                gl.viewport( 0, 0, gl.canvas.width, gl.canvas.height );
+                gl.clearColor( 0, 0, 0, 1 );
+                gl.clear( gl.COLOR_BUFFER_BIT );
+
+                const positions = [-xScale, -yScale, xScale, -yScale, -xScale, yScale, xScale, yScale];
+                gl.bindBuffer( gl.ARRAY_BUFFER, gl.createBuffer() );
+                gl.bufferData( gl.ARRAY_BUFFER, new Float32Array( positions ), gl.STATIC_DRAW );
+                gl.vertexAttribPointer( program.posLocation, 2, gl.FLOAT, false, 0, 0 );
+
+                const texCoords = [0, 0, 1, 0, 0, 1, 1, 1];
+                gl.bindBuffer( gl.ARRAY_BUFFER, gl.createBuffer() );
+                gl.bufferData( gl.ARRAY_BUFFER, new Float32Array( texCoords ), gl.STATIC_DRAW );
+                gl.vertexAttribPointer( program.texLocation, 2, gl.FLOAT, false, 0, 0 );
+
+                gl.uniform2f( program.dimLocation, gl.canvas.width, gl.canvas.height );
+
+                gl.activeTexture( gl.TEXTURE0 );
+                gl.bindTexture( gl.TEXTURE_2D, srcTexture );
+                gl.uniform1i( program.imgLocation, 0 );
+
+                gl.drawArrays( gl.TRIANGLE_STRIP, 0, 4 );
+            };
+
+            this.programSelf = gl.compileProgram( VERT_SOURCE_DEFAULT, FRAG_SOURCE_DEFAULT );
+            this.programGrey = gl.compileProgram( VERT_SOURCE_DEFAULT, FRAG_SOURCE_GREY );
+            this.programBlur = gl.compileProgram( VERT_SOURCE_DEFAULT, FRAG_SOURCE_BLUR, { radiusLocation: 'u_radius' } );
+            this.programHarris = gl.compileProgram( VERT_SOURCE_DEFAULT, FRAG_SOURCE_HARRIS, { thresholdLocation: 'u_threshold', kLocation: 'u_k', stepLocation: 'u_step' } );
+            this.programNonmax = gl.compileProgram( VERT_SOURCE_DEFAULT, FRAG_SOURCE_NONMAX, { radiusLocation: 'u_radius' } );
+            this.programMarker = gl.compileProgram( VERT_SOURCE_DEFAULT, FRAG_SOURCE_MARKER, { sizeLocation: 'u_size' } );
+
+            this.texture = WebGL2.createTexture( gl, gl.canvas.width, gl.canvas.height, gl.UNSIGNED_BYTE, true, false );
+
+            this.ping = WebGL2.createFrameBuffer( gl, gl.canvas.width, gl.canvas.height, gl.FLOAT, true, true );
+            this.pong = WebGL2.createFrameBuffer( gl, gl.canvas.width, gl.canvas.height, gl.FLOAT, true, true );
+
+            this.bufferSize = gl.canvas.width * gl.canvas.height * 4;
+
+            // to read from webgl canvas
+            //this.rgba = new Uint8ClampedArray( this.bufferSize );
+
+            // to read from our float ping pong buffers
+            this.rgba = new Float32Array( this.bufferSize );
+
+            // Create a buffer to store the pixel data to test async reading of pixels
+            this.pbo = gl.createBuffer();
+            gl.bindBuffer( gl.PIXEL_PACK_BUFFER, this.pbo );
+            gl.bufferData( gl.PIXEL_PACK_BUFFER, this.bufferSize, gl.STATIC_DRAW );
+            gl.bindBuffer( gl.PIXEL_PACK_BUFFER, null );
+
+            this.gl = gl;
+        }
+
+        process( source, blur = 1.0, harrisK = 0.04, harrisThr = 0.01, nmsRadius = 3 )
+        {
+            if( !this.gl ) return this.rgba;
+
+            const gl = this.gl;
+
+            const sourceWidth = source.videoWidth || source.naturalWidth || source.width;
+            const sourceHeight = source.videoHeight || source.naturalHeight || source.height;
+
+            const canvasAspectRatio = gl.canvas.width / gl.canvas.height;
+            const sourceAspectRatio = sourceWidth / sourceHeight;
+
+            let xScale = 1.0;
+            let yScale = 1.0;
+
+            if( canvasAspectRatio > sourceAspectRatio )
+            {
+                yScale = canvasAspectRatio / sourceAspectRatio;
+            }
+            else
+            {
+                xScale = sourceAspectRatio / canvasAspectRatio;
+            }
+
+            // upload image/video to GPU
+            //-------------------------------------------------------------------------------
+            gl.bindTexture( gl.TEXTURE_2D, this.texture );
+            gl.texImage2D( gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source );
+            //-------------------------------------------------------------------------------
+
+            // compute media size and convert to greyscale
+            //-------------------------------------------------------------------------------
+            gl.runProgram( this.programGrey, this.texture, this.ping.fbo, xScale, yScale );
+            //-------------------------------------------------------------------------------
+
+            // compute blur
+            //-------------------------------------------------------------------------------
+            gl.useProgram( this.programBlur );
+            gl.uniform1f( this.programBlur.radiusLocation, blur );
+            gl.runProgram( this.programBlur, this.ping.tex, this.pong.fbo );
+            //-------------------------------------------------------------------------------
+
+            // compute Harris corners first pass
+            //-------------------------------------------------------------------------------
+            gl.useProgram( this.programHarris );
+            gl.uniform1i( this.programHarris.stepLocation, 0 );
+            gl.runProgram( this.programHarris, this.pong.tex, this.ping.fbo );
+            //-------------------------------------------------------------------------------
+
+            // compute Harris corners second pass
+            //-------------------------------------------------------------------------------
+            gl.uniform1i( this.programHarris.stepLocation, 1 );
+            gl.uniform1f( this.programHarris.kLocation, harrisK );
+            gl.uniform1f( this.programHarris.thresholdLocation, harrisThr );
+            gl.runProgram( this.programHarris, this.ping.tex, this.pong.fbo );
+            //-------------------------------------------------------------------------------
+
+            // compute non-maximum suppression
+            //-------------------------------------------------------------------------------
+            gl.useProgram( this.programNonmax );
+            gl.uniform1f( this.programNonmax.radiusLocation, nmsRadius );
+            gl.runProgram( this.programNonmax, this.pong.tex, this.ping.fbo );
+            //-------------------------------------------------------------------------------
+
+            // render corners
+            //-------------------------------------------------------------------------------
+            gl.useProgram( this.programMarker );
+            gl.uniform1f( this.programMarker.sizeLocation, 2.0 );
+            gl.runProgram( this.programMarker, this.ping.tex, null );
+            //-------------------------------------------------------------------------------
+
+            // read processed image pixels async through buffer
+            //-------------------------------------------------------------------------------
+            // gl.bindBuffer( gl.PIXEL_PACK_BUFFER, this.pbo );
+            //
+            // // Read the pixels asynchronously
+            // gl.readPixels( 0, 0, gl.canvas.width, gl.canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, 0 );
+            //
+            // // Wait for the read operation to complete
+            // gl.finish();
+            //
+            // // Get the pixel data from the buffer
+            // gl.bindBuffer( gl.PIXEL_PACK_BUFFER, this.pbo );
+            // gl.getBufferSubData( gl.PIXEL_PACK_BUFFER, 0, this.rgba );
+            //
+            // // Unbind the buffer and delete it
+            // gl.bindBuffer( gl.PIXEL_PACK_BUFFER, null );
+            //-------------------------------------------------------------------------------
+
+            // read processed image pixels from ping pong buffer
+            //-------------------------------------------------------------------------------
+            gl.bindFramebuffer( gl.FRAMEBUFFER, this.ping.fbo );
+            gl.readPixels( 0, 0, gl.canvas.width, gl.canvas.height, gl.RGBA, gl.FLOAT, this.rgba );
+            gl.bindFramebuffer( gl.FRAMEBUFFER, null );
+            //-------------------------------------------------------------------------------
+
+            return this.rgba;
+        }
+
+        getKeypoints( rgba, width, height, border = 8 )
+        {
+            const minX = border;
+            const maxX = width - border;
+            const minY = border;
+            const maxY = height - border;
+
+            const maxKeypoints = Math.ceil( rgba.length / 4 );
+            const keypoints = new Array( maxKeypoints );
+            let numKeypoints = 0;
+
+            let x = 0;
+            let y = 0;
+
+            for( let i = 0; i < rgba.length; i += 4 )
+            {
+                const response = rgba[i];
+
+                if( response > 0 && x >= minX && y >= minY && x < maxX && y < maxY )
+                {
+                    keypoints[numKeypoints++] = { x: x, y: y, response: response };
+                }
+
+                if( ++x === width )
+                {
+                    x = 0;
+                    y++;
+                }
+            }
+
+            keypoints.length = numKeypoints;
+
+            return keypoints;
+        }
+    }
+
+    function main()
+    {
+        const options = {
+            'blur': 1,
+            'harrisK': 0.04,
+            'harrisThr': 0.01,
+            'nmsRadius': 2,
+            'toggle source': () => toggleSource(),
+            'toggle stacking': () => document.querySelector( '.container' ).classList.toggle( "stacked" ),
+            'toggle webgl': () => canvas2d.parentElement.classList.toggle( "hide" ),
+            'toggle 2d': () => canvas3d.parentElement.classList.toggle( "hide" ),
+        };
+
+        const gui = new GUI();
+        gui.add( options, 'blur', 1, 10.0, 1 );
+        gui.add( options, 'harrisK', 0.02, 0.2, 0.01 );
+        gui.add( options, 'harrisThr', 0.01, 0.2, 0.01 );
+        gui.add( options, 'nmsRadius', 1, 10.0, 1 );
+        gui.add( options, 'toggle source' );
+        gui.add( options, 'toggle stacking' );
+        gui.add( options, 'toggle webgl' );
+        gui.add( options, 'toggle 2d' );
+
+        const video = document.getElementById( 'video' );
+        const image = document.getElementById( 'image' );
+        const canvas2d = document.getElementById( 'canvas2d' );
+        const canvas3d = document.getElementById( 'canvas3d' );
+
+        video.load();
+        video.play();
+        video.addEventListener( 'ended', () =>
+        {
+            video.load();
+            video.play();
+        } );
+
+        const ctx = canvas2d.getContext( '2d' );
+        const rect = canvas3d.getBoundingClientRect();
+        const ratio = 1; //window.devicePixelRatio || 1;
+        const bmd = new ImageData( rect.width, rect.height );
+
+        Stats.add( 'gpu' );
+        Stats.add( 'cpu' );
+        Stats.add( 'total' );
+        document.body.appendChild( Stats.el );
+
+        canvas2d.width = canvas3d.width = rect.width * ratio;
+        canvas2d.height = canvas3d.height = rect.height * ratio;
+        canvas2d.style.width = canvas3d.style.width = rect.width + 'px';
+        canvas2d.style.height = canvas3d.style.height = rect.height + 'px';
+
+        const gpu = new PreProcessor( canvas3d );
+
+        let media = null;
+
+        function toggleSource()
+        {
+            if( media === video )
+            {
+                image.parentElement.classList.remove( 'hide' );
+                video.parentElement.classList.add( 'hide' );
+                media = image;
+            }
+            else
+            {
+                image.parentElement.classList.add( 'hide' );
+                video.parentElement.classList.remove( 'hide' );
+                media = video;
+            }
+        }
+
+        function render()
+        {
+            requestAnimationFrame( render );
+
+            if( video.readyState >= 4 )
+            {
+                Stats.next();
+
+                Stats.start( 'total' );
+
+                Stats.start( 'gpu' );
+                const rgba = gpu.process( media, options.blur, options.harrisK, options.harrisThr, options.nmsRadius );
+                Stats.stop( 'gpu' );
+
+                Stats.start( 'cpu' );
+                const keypoints = gpu.getKeypoints( rgba, canvas3d.width, canvas3d.height );
+                Stats.stop( 'cpu' );
+
+                bmd.data.set( rgba );
+
+                const color = 0xFFFF00FF;
+                const pixels = new Uint32Array( bmd.data.buffer );
+                const width = bmd.width;
+
+                for( const keypoint of keypoints )
+                {
+                    const index = (keypoint.x + keypoint.y * width);
+
+                    pixels[index] = color;
+                    pixels[index - 2] = color;
+                    pixels[index - 1] = color;
+                    pixels[index + 1] = color;
+                    pixels[index + 2] = color;
+                    pixels[index - width] = color;
+                    pixels[index - width * 2] = color;
+                    pixels[index + width] = color;
+                    pixels[index + width * 2] = color;
+                }
+
+                ctx.putImageData( bmd, 0, 0 );
+                Stats.stop( 'total' );
+
+                Stats.render();
+            }
+        }
+
+        toggleSource();
+        render();
+    }
+
+    window.addEventListener( 'load', main );
+</script>
+</body>
+</html>
