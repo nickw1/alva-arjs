@@ -21,6 +21,8 @@ function main() {
     const canvas = document.createElement('canvas');
     const overlay = document.getElementById('overlay');
 
+    const origLon = -0.72, origLat = 51.05;
+
     Camera.Initialize(config).then( async(media) => {
         const video = media.el;
         const size = resize2cover(video.videoWidth, video.videoHeight, container.clientWidth, container.clientHeight);
@@ -41,44 +43,78 @@ function main() {
         const arjs = new THREEx.LocationBased(arCamView.scene, arCamView.camera, { initialPositionAsOrigin: true});
         console.log('sending fakeGps');
 
-        const geom = new THREE.BoxGeometry(10,10,10);
-        const mtl = [new THREE.MeshBasicMaterial({color:0xff0000}),  new THREE.MeshBasicMaterial({color:0xffff00}),  new THREE.MeshBasicMaterial({color:0x0000ff}),  new THREE.MeshBasicMaterial({color:0x00ff00})];
-        let object;
+        const geom = new THREE.BoxGeometry(20,20,20);
+        const props = [{
+            mtl: new THREE.MeshBasicMaterial({color:0xff0000}),
+            lonDis: -0.001,
+            latDis: 0,
+            yDis: 0
+        }, {
+            mtl: new THREE.MeshBasicMaterial({color:0xffff00}), 
+            lonDis: 0.001,
+            latDis: 0,
+            yDis: 0
+        }, {
+            mtl: new THREE.MeshBasicMaterial({color:0x0000ff}),  
+            lonDis: 0,
+            latDis: -0.001,
+            yDis: 0
+        }, {
+            mtl: new THREE.MeshBasicMaterial({color:0x00ff00}),
+            lonDis: 0,
+            latDis: 0.001,
+            yDis: 0
+        }, {
+            mtl: new THREE.MeshBasicMaterial({color:0xffff80}),
+            lonDis: 0,
+            latDis: 0,
+            yDis:100
+        }, {
+            mtl: new THREE.MeshBasicMaterial({color:0xff80ff}),
+            lonDis: 0,
+            latDis: 0,
+            yDis:-100
+        }
+        ];
+        let objectsAdded = false;
 
         arjs.on("gpsupdate", e => {
             console.log('camera position now:');
             console.log(arCamView.camera.position);
-            if(!object) {
-                object = new THREE.Mesh(geom, mtl[0]);
-                object.visible = false;    
-                const pos = arjs.lonLatToWorldCoords(-0.72, 51.051);
-                console.log(pos);
-                arCamView.addObject(object, pos[0], arCamView.camera.position.y, pos[1]);
+            if(!objectsAdded) {
+                for(let i=0; i<props.length; i++) {
+                    const object = new THREE.Mesh(geom, props[i].mtl);
+                    object.visible = false;    
+                    const pos = arjs.lonLatToWorldCoords(origLon + props[i].lonDis, origLat + props[i].latDis); 
+                    console.log(pos);
+                    arCamView.addObject(object, pos[0], arCamView.camera.position.y + props[i].yDis, pos[1]);
+                }
+                objectsAdded = true;
+                onFrame( () => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+                    const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const pose = alva.findCameraPose(frame);
+                    if(pose) {
+                        arCamView.updateCameraPose(pose);
+                    } else {
+                        arCamView.lostCamera();
+                        const dots = alva.getFramePoints();
+                        for(const p of dots) {
+                            ctx.fillStyle = 'white';
+                            ctx.fillRect(p.x, p.y,2, 2);
+                        }
+                    }
+                    return true;
+                }, 30);
             }
         });
 
         container.appendChild(canvas);
         container.appendChild(view);
-        arjs.fakeGps(-0.72, 51.05);
+        arjs.fakeGps(origLon, origLat);
 
 
-        onFrame( () => {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
-            const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const pose = alva.findCameraPose(frame);
-            if(pose) {
-                arCamView.updateCameraPose(pose);
-            } else {
-                arCamView.lostCamera();
-                const dots = alva.getFramePoints();
-                for(const p of dots) {
-                    ctx.fillStyle = 'white';
-                    ctx.fillRect(p.x, p.y,2, 2);
-                }
-            }
-            return true;
-        }, 30);
         
     }).catch( error => alert(error) );
 }

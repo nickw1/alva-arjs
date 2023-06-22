@@ -2,7 +2,7 @@
 
 The aim of this project is to explore [AlvaAR](https://github.com/alanross/AlvaAR) and integrate with location-based [AR.js](https://github.com/AR-js-org/AR.js), with an eventual aim to place geographic AR content realistically on the ground.
 
-So far, just a proof-of-concept using what I believe is the minimal code for using AlvaAR.
+So far, just a proof-of-concept using what I believe is the minimal code for using AlvaAR, and integration with the AR.js location-based API. Nothing particularly exciting for now.
 
 ## Instructions
 
