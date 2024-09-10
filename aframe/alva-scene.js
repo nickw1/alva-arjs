@@ -51,13 +51,13 @@ AFRAME.registerComponent("alva-scene", {
             
         
         this.applyPose = AlvaARConnectorTHREE.Initialize(THREE);
-        this.el.addEventListener("gps-entity-place-added", e => {
-            console.log('gps-entity-place-added');
+        this.el.addEventListener("object-added", e => {
+            console.log('object-added');
             this.registerEntity(e.detail.component);
         }); 
 
-        this.el.addEventListener('all-gps-entity-places-added', e => {
-            console.log('all-gps-entity-places-added');
+        this.el.addEventListener('all-objects-added', e => {
+            console.log('all-objects-added');
             this._setActive(true);
         });
     },

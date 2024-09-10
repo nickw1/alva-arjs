@@ -1,8 +1,16 @@
 # AlvaAR and AR.js Experiments
 
+## Introduction
+
 The aim of this project is to explore [AlvaAR](https://github.com/alanross/AlvaAR) and integrate with location-based [AR.js](https://github.com/AR-js-org/AR.js), with an eventual aim to place geographic AR content realistically on the ground.
 
 So far, just a proof-of-concept using what I believe is the minimal code for using AlvaAR, and integration with the AR.js location-based API. Nothing particularly exciting for now.
+
+It's mostly about understanding what Alva can do.
+
+### Update 2024-09-10
+
+With the aim of better understanding the coordinate system that Alva gives, the `alva-basic` A-Frame component now displays icosahedra along the x and z axes without any AR.js or location-based input.
 
 ## Instructions
 

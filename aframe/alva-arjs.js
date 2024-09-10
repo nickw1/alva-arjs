@@ -45,7 +45,7 @@ AFRAME.registerComponent("alva-arjs", {
                     document.querySelector("a-scene").appendChild(entity);
                 }
                 testEntitiesAdded = true;
-                this.el.emit("all-gps-entity-places-added", { });
+                this.el.emit("all-objects-added", { });
             }
         });
     }
