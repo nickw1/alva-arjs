@@ -5,7 +5,7 @@ module.exports = {
     mode: 'development',
     entry: {
         'three':  path.resolve(__dirname, 'three/index.js'),
-        'aframe':  path.resolve(__dirname, 'aframe/index.js'),
+        'aframe':  path.resolve(__dirname, 'aframe/alva-basic.js'),
     },
     output: {
         path: path.resolve(__dirname, 'public/dist'),

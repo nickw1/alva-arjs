@@ -6,6 +6,7 @@ import './clicker.js';
 
 AFRAME.registerComponent("alva-basic", {
     init: function() {
+            console.log('alva-basic init');
             const properties = [{
                 color: 'white',
                 x: 0,
@@ -47,7 +48,7 @@ AFRAME.registerComponent("alva-basic", {
                 });
                 entity.setAttribute('clicker', { });                
                 document.querySelector("a-scene").appendChild(entity);
-                this.el.emit("all-objects-added", { });
             }
+            this.el.emit("all-objects-added", { });
     }
 });
