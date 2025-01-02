@@ -27,6 +27,10 @@ This repository is currently very experimental and subject to change; I have exp
 
 ### Build
 
+Install with
+
+`npm i`
+
 Build with
 
 `npm run build`
