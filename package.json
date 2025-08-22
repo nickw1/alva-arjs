@@ -1,18 +1,17 @@
 {
-    "name": "alva-test",
+    "name": "alva-js-test",
     "version": "0.0.1",
     "scripts": {
-        "build": "npx webpack"
+        "dev": "npx vite dev",
+        "build": "npx vite build"
     },
     "dependencies": {
-        "@ar-js-org/ar.js": "^3.4.5",
+        "locar": "file:../locar.js/locar-0.0.13-pre3.tgz",
+        "alva-js": "file:../AlvaAR/js/alva-js-0.0.1.tgz",
         "aframe-osm-3d": "^0.5.2",
-        "http-server": "^14.1.1",
         "jsfreemaplib": "^0.4.0"
     },
     "devDependencies": {
-        "node-polyfill-webpack-plugin": "^1.1.0",
-        "webpack": "^5.75.0",
-        "webpack-cli": "^5.0.1"
+        "vite": "^7.1.3"
     }
 }
