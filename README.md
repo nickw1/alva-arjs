@@ -2,37 +2,41 @@
 
 ## Introduction
 
-The aim of this project is to explore [AlvaAR](https://github.com/alanross/AlvaAR) and integrate with location-based [AR.js](https://github.com/AR-js-org/AR.js), with an eventual aim to place geographic AR content realistically on the ground.
+The aim of this project is to explore [AlvaAR](https://github.com/alanross/AlvaAR) and integrate with AR.js's location-based [LocAR.js](https://github.com/AR-js-org/locar.js), with an eventual aim to place geographic AR content realistically on the ground.
 
 So far, just a proof-of-concept using what I believe is the minimal code for using AlvaAR, and integration with the AR.js location-based API. Nothing particularly exciting for now.
 
 It's mostly about understanding what Alva can do.
 
-### Update 2024-09-10
+### Update 2025-08-22
 
-With the aim of better understanding the coordinate system that Alva gives, the `alva-basic` A-Frame component now displays icosahedra along the x and z axes without any AR.js or location-based input.
+Now using LocAR.js plus the `npm`-ised version of AlvaAR.
 
 ## Instructions
 
-This now includes a **modified** version of code from the AlvaAR examples, specifically the contents of the `assets` directory which contains library-style code. 
+### Install dependencies
 
-Everything in the `alva` directory is taken from AlvaAR.
+You need to ensure you build the specific versions of LocAR.js and AlvaAR below. Neither are available on NPM.
 
-I have however removed the large `image.gif` and `video.mp4` files as these are not needed.
-
-
-## Versions
-
-This repository is currently very experimental and subject to change; I have experiments with both three.js and A-Frame. Currently, my aim is to try and re-use as much of the AlvaAR example code as possible.
-
-### Build
-
-Install with
-
-`npm i`
-
-Build with
+- version `0.0.13-pre3` of LocAR.js. This can be obtained by building the code in the `PR16` branch from [LocAR.js](https://github.com/AR-js-org/locar.js). Please build with
 
 `npm run build`
 
-Then run a webserver in the `public` directory and request the index page you want (`three.html` or `aframe.html`) in your browser.
+and it will produce a tarball.
+
+- The `npm` version of AlvaAR. This can be obtained from the `demomod` branch of my modified version of AlvaAR [here](https://github.com/nickw1/AlvaAR). The source code is available in the `js` directory; please build it with 
+
+`npm run build`
+
+and it will produce a tarball.
+
+
+### Run the demo
+
+The demo is setup to run using [Vite](https://vitejs.dev). You may need to modify the `package.json` to change the locations of the LocAR.js and AlvaAR tarballs. Then simply
+
+`npm run dev`
+
+## What can it do?
+
+Right now it positions the user at a hard-coded GPS location (for ease of testing) and tracks the user with AlvaAR. It does not attempt to link the two yet, I need to get a good idea of how the AlvaAR tracking is working in the field before I do so, but the aim then will be to refine the GPS position with the tracked AlvaAR position.
