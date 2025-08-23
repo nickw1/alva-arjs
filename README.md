@@ -16,15 +16,11 @@ Now using LocAR.js plus the `npm`-ised version of AlvaAR.
 
 ### Install dependencies
 
-You need to ensure you build the specific versions of LocAR.js and AlvaAR below. Neither are available on NPM.
+You need to ensure you build the specific versions of LocAR.js and AlvaAR below.
 
-- version `0.0.13-pre3` of LocAR.js. This can be obtained by building the code in the `PR16` branch from [LocAR.js](https://github.com/AR-js-org/locar.js). Please build with
+- version `0.1.x` of [LocAR.js](https://github.com/AR-js-org/locar.js). Can be installed with `npm`. 
 
-`npm run build`
-
-and it will produce a tarball.
-
-- The `npm` version of AlvaAR. This can be obtained from the `demomod` branch of my modified version of AlvaAR [here](https://github.com/nickw1/AlvaAR). The source code is available in the `js` directory; please build it with 
+- The `npm` version of AlvaAR. This is not on NPM; it can be obtained from the `demomod` branch of my modified version of AlvaAR [here](https://github.com/nickw1/AlvaAR). The source code is available in the `js` directory; please build it with 
 
 `npm run build`
 
@@ -34,6 +30,10 @@ and it will produce a tarball.
 ### Run the demo
 
 The demo is setup to run using [Vite](https://vitejs.dev). You may need to modify the `package.json` to change the locations of the LocAR.js and AlvaAR tarballs. Then simply
+
+`npm install`
+
+to install dependencies and
 
 `npm run dev`
 
