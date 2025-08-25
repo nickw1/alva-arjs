@@ -56,8 +56,7 @@ async function initAlva() {
     // from Alva demo - add the icosahedron object
     const object = new THREE.Mesh( new THREE.IcosahedronGeometry( 1, 0 ), new THREE.MeshNormalMaterial( { flatShading: true } ) );
     object.visible = false;
-    // will be added at x=0, y=0, z=-10
-    arCamView.addObject( object );
+    arCamView.addObject( object, 0, 0, -5 );
 }
 
 function initLocar() {
