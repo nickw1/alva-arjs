@@ -1,4 +1,4 @@
-import { AlvaAR, ARCamView, Camera, onFrame, resize2cover } from 'alva-js';
+import { AlvaAR, ARCamView, Camera, onFrame, resize2cover, AlvaARConnectorTHREE } from 'alva-js';
 import * as THREE from 'three';
 import * as LocAR from 'locar';
 
@@ -18,8 +18,12 @@ const overlay = document.getElementById('overlay');
 
 const origLon = -0.72, origLat = 51.05;
 
+const applyPose = AlvaARConnectorTHREE.Initialize( THREE );
+
 let alva, locar, arCamView, ctx, video;
 let gotFirstGps = false;
+
+let detectPlane = false;
 
 Camera.Initialize(config).then( async(media) => {
     video = media.el;
@@ -53,10 +57,16 @@ async function initAlva() {
     alva = await AlvaAR.Initialize(canvas.width, canvas.height);
     arCamView = new ARCamView(view, canvas.width, canvas.height);
 
+    view.addEventListener('click', e=> {
+        detectPlane = true;
+    });
+
     // from Alva demo - add the icosahedron object
     const object = new THREE.Mesh( new THREE.IcosahedronGeometry( 1, 0 ), new THREE.MeshNormalMaterial( { flatShading: true } ) );
     object.visible = false;
     arCamView.addObject( object, 0, 0, -5 );
+    const originObject = new THREE.Mesh( new THREE.BoxGeometry( 0.5, 0.5, 0.5 ), new THREE.MeshBasicMaterial( { color: 0xffffff } ) );
+    arCamView.addObject( originObject, 0, 0, 0 );
 }
 
 function initLocar() {
@@ -83,21 +93,11 @@ function initLocar() {
         lonDis: 0,
         latDis: 0.001,
         yDis: 0
-    }, {
-        mtl: new THREE.MeshBasicMaterial({color:0xffff80}),
-        lonDis: 0,
-        latDis: 0,
-        yDis:100
-    }, {
-        mtl: new THREE.MeshBasicMaterial({color:0xff80ff}),
-        lonDis: 0,
-        latDis: 0,
-        yDis:-100
-    }
-    ];
+    }];
 
     locar.on("gpsupdate", ev => {
         alert(`Got GPS position: ${ev.position.coords.longitude} ${ev.position.coords.latitude}`);
+        document.getElementById("start").removeAttribute("disabled");
         console.log(`gpsupdate: camera position now:`);
         console.log(arCamView.camera.position);
         if(!gotFirstGps) {
@@ -126,6 +126,32 @@ function setupFrameHandler() {
                 arCamView.updateCameraPose(pose);
                 console.log(`onFrame(): camera position now:`);
                 console.log(arCamView.camera.position);
+                // plane code taken from the AlvaAR video example 
+                if(detectPlane) {
+                    const planePose = alva.findPlane();
+                    if(planePose) {
+                        let scale = 2.0;
+                        const plane = new THREE.Mesh( new THREE.PlaneGeometry( scale, scale ), new THREE.MeshBasicMaterial( {
+                            color: 0xffffff,
+                            side: THREE.DoubleSide,
+                            transparent: true,
+                            opacity: 0.1
+                        } ) );
+
+                        scale *= 0.25;
+
+                        const cube = new THREE.Mesh( new THREE.BoxGeometry( scale, scale, scale ), new THREE.MeshNormalMaterial( { flatShading: true } ) );
+                        cube.position.z = scale * 0.5;
+
+                        plane.add( cube );
+                        plane.custom = true;
+                         
+                        applyPose( planePose, plane.quaternion, plane.position );
+                        arCamView.scene.add( plane );
+
+                        detectPlane = false;
+                    }
+                }
             } else {
                 arCamView.lostCamera();
                 const dots = alva.getFramePoints();
