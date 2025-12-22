@@ -144,8 +144,12 @@ function setupFrameHandler() {
             // TODO we need to reinitialise alva tracking when we get a new GPS position - how do we do this?
             const pose = alva.findCameraPose(frame);
             if(pose) {
+                
                 // this updates the camera's position and quaternion 
                 arCamView.updateCameraPose(pose);
+
+                console.log('pose:');
+                console.log(pose);
                 
                 // we now have to update the matrix manually due to matrixAutoUpdate = false
                 arCamView.camera.updateMatrix();
@@ -154,10 +158,14 @@ function setupFrameHandler() {
                 if(locarCam) {
                     // create clone of alva matrix
                     const tmpMatrix = arCamView.camera.matrix.clone();
+                    console.log('tmpMatrix:');
+                    console.log(tmpMatrix);
+                    console.log('locarCam.matrix:');
+                    console.log(locarCam.matrix);
                     // multiply alva matrix by locar matrix to get combined matrix (reverse of transformation order which is locar first then alva)
                     tmpMatrix.multiply(locarCam.matrix);    
                     // set alva matrix to the result
-                    arCamView.camera.matrix.set(tmpMatrix);
+                    arCamView.camera.matrix.copy(tmpMatrix);
                 }
                 console.log(`onFrame(): camera position now:`);
                 console.log(arCamView.camera.position);
