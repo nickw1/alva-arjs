@@ -124,14 +124,15 @@ function initLocar() {
             for(let i=0; i<props.length; i++) {
                 const object = new THREE.Mesh(geom, props[i].mtl);
                 object.visible = false;    
-                const [x, z]  = locar.lonLatToWorldCoords(origLon + props[i].lonDis, origLat + props[i].latDis); 
+                const [x, z]  = locar.lonLatToWorldCoords(ev.position.coords.longitude + props[i].lonDis, ev.position.coords.latitude + props[i].latDis); 
                 console.log(x, z);
                 arCamView.addObject(object, x, arCamView.camera.position.y + props[i].yDis, z);
             }
             gotFirstGps = true;
         }
     });
-    locar.fakeGps(-0.72, 51.05);
+//    locar.fakeGps(-0.72, 51.05);
+    locar.startGps();
 }
 
 function setupFrameHandler() {
