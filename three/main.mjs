@@ -96,7 +96,6 @@ function initLocar() {
     deviceOrientationControls.init();
 
     locar.on("gpsupdate", ev => {
-        alert(`Got GPS position: ${ev.position.coords.longitude} ${ev.position.coords.latitude}`);
         document.getElementById("start").removeAttribute("disabled");
         const geom = new THREE.BoxGeometry(20,20,20);
         const props = [{
@@ -121,6 +120,7 @@ function initLocar() {
             yDis: 0
         }];
         if(!gotFirstGps) {
+            alert(`Got GPS position: ${ev.position.coords.longitude} ${ev.position.coords.latitude}`);
             for(let i=0; i<props.length; i++) {
                 const object = new THREE.Mesh(geom, props[i].mtl);
                 object.visible = false;    
